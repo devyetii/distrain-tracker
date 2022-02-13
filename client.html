@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1 id="txt"></h1>
+
+    <form onsubmit="">
+        <div>
+            <label for="address">Address</label>
+            <input type="text" name="address" id="address" />
+        </div>
+        <div>
+            <label for="msg">Message</label>
+            <input type="text" name="msg" id="msg" />
+        </div>
+        <input type="submit" value="Send"/>
+    </form>
+
+    <script>
+        let ws = null;
+        let address = "";
+        const form = document.forms[0];
+        const addressInput = document.querySelector("input#address");
+        const msgInput = document.querySelector("input#msg");
+        const txt = document.getElementById("txt");
+
+        form.addEventListener('submit', (ev) => {
+            ev.preventDefault();
+            if (!ws || addressInput.value != address) {
+                ws = new WebSocket(addressInput.value);
+                address = addressInput.value;
+                ws.onopen = () => {
+                    console.log("Connection open");
+                    ws.onmessage = (event) => {
+                        txt.innerText = event.data;
+                    }
+                    ws.send(msgInput.value);
+                };
+            } else {
+                ws.send(msgInput.value);
+            }
+        });
+
+    </script>
+</body>
+</html>
