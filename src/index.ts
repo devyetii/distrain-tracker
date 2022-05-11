@@ -1,53 +1,59 @@
-import { MemoryStorage } from './common/MemoryStorage';
+import { DeviceRepository } from './common/DeviceRepository';
 import { MessageFactory } from './message/MessageFactory';
 import { WebSocket, MessageEvent } from 'ws';
 import { v4 as uuid } from 'uuid';
+import dotenv from 'dotenv';
 
-interface Device {
-  id: string;
-  socket: WebSocket;
-}
-
+dotenv.config();
 
 const port: number = +(process.env.PORT ? process.env.PORT : 9001);
-
 const wss = new WebSocket.Server({ port })
-
-let connected_devices: any[] = [];
 
 wss.on('listening', () => {
   console.log(`Listening on port ${port}`);
 });
 
-const memStore = new MemoryStorage(undefined);
+const deviceRepo = new DeviceRepository(undefined);
 
 wss.on('connection', async (ws, req) => {
-  let newDevice: Device;
-  let deviceId = req.headers['x-device-id'];
+  let deviceId = <string>req.headers['x-device-id'];
+  let deviceAddress = <string>req.headers['x-device-address'];
 
-  const deviceSocket = await memStore.get(`${deviceId}`);
-  
-  if (deviceSocket === "" || deviceSocket === null) {
+  if (deviceId === "" || deviceId === null || deviceId === undefined) {
     deviceId = uuid();
     console.log("New device");
-    memStore.set(deviceId, "Connected");
+    await deviceRepo.createDevice({
+      id: deviceId,
+      status: "idle",
+      last_login: new Date(Date.now()),
+      address: deviceAddress,
+    });
     ws.send(JSON.stringify({ type: 'deviceId', data: deviceId }));
   } else {
     console.log("Device found before");
+    deviceRepo.updateDevice({
+      id: deviceId,
+      status: 'idle',
+      last_login: new Date(Date.now()),
+    });
   }
+
+  deviceRepo.setStatus(deviceId, "idle");
+  deviceRepo.setSocket(deviceId, ws);
   
   ws.addEventListener('message', (message: MessageEvent) => {
     const msgInstance = MessageFactory.createMessage(ws, <string>(message.data))
     msgInstance?.handle();
   });
 
-  ws.addEventListener('close', (code) => {
+  ws.addEventListener('close', ({code}) => {
     console.log(`Socket ${deviceId} closing ... Code`, code);
-    connected_devices = connected_devices.filter((dev) => dev.id !== newDevice.id);
+    deviceRepo.disconnectDevice(deviceId);
   });
 
   ws.addEventListener('error', (err) => {
     console.log(`Socket ${deviceId} error`);
     console.log(err);
+    deviceRepo.disconnectDevice(deviceId);
   });
 });
