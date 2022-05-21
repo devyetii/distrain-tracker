@@ -5,14 +5,51 @@ export interface Task {
     devices_count: number;
     params: string;
     status: "new" | "ongoing" | "succeeded" | "failed";
-    chunck_url?: string;
-    data_type: string;
-    data_type_params: string;
+    chunkUrl?: string;
+    dataType: string;
+    dataTypeParams: string;
 }
 
 @Singleton
 export class TaskRepository {
-    private dbClient: DBClient = new DBClient();
+    private dbClient: DBClient;
+
+    constructor()
+	{
+		this.dbClient = new DBClient();
+	}
+
+    public async addTask(task: Task)
+	{
+		const session = this.dbClient.getSession();
+		try
+		{
+			await session.writeTransaction(tx => tx.run("CREATE (newTask:TASK) SET newTask.id = $id, newTask.devices_count = $devices_count, newTask.params = $params, newTask.status = $status", task));
+		} catch (err)
+		{
+			console.error("Neo4J store error", err);
+		} finally
+		{
+			console.log("task stored successfully");
+			session.close();
+		}
+	}
+
+	public async updateTask(task: Task)
+	{
+		const session = this.dbClient.getSession();
+		try
+		{
+			await session.writeTransaction(tx => tx.run("MATCH (t:TASK {id: $id}) SET t.status = $status", task));
+		} catch (err)
+		{
+			console.error("Neo4J store error", err);
+		} finally
+		{
+			console.log("task updated successfully");
+			session.close();
+		}
+	}
 
     public async getMinTask() {
         const session = this.dbClient.getSession();
