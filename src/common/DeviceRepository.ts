@@ -13,6 +13,7 @@ interface Device {
     last_login: Date;
 }
 
+
 @Singleton
 export class DeviceRepository {
     private client: RedisClientType;
@@ -108,6 +109,25 @@ export class DeviceRepository {
 
     public getSocket(id: string): WebSocket | null | undefined {
         return this.socketStore.get(id);
+    }
+
+    public async getNIdleDevices(n: number): Promise<Device[]> {
+        const session = this.dbClient.getSession();
+        let devices: Device[] = [];
+
+        try {
+            const res = await session.readTransaction(tx => 
+                tx.run("MATCH (d:DEVICE) WHERE d.status = \"idle\" RETURN d LIMIT $n", { n })    
+            );
+
+            devices = res.records.map(record => ({
+                ...record.get('d').properties,
+            }))
+        } catch (err) {
+            console.error("Neo4j Read error: ", err);
+        }
+
+        return devices;
     }
 
     public disconnectDevice(deviceId: string) {
