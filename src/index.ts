@@ -97,8 +97,8 @@ wss.on('listening', () =>
 });
 
 wss.on('connection', async (ws, req) => {
-  let deviceId = <string>req.headers['x-device-id'];
-  let deviceAddress = <string>req.headers['x-device-address'];
+  let deviceId = <string>req.headers['x-device-id'] || "";
+  let deviceAddress = <string>req.headers['x-device-address'] || "";
 
   if (deviceId === "" || deviceId === null || deviceId === undefined) {
     deviceId = uuid();
