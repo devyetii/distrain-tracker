@@ -1,10 +1,11 @@
-import { DBClient } from './db';
-import { Singleton } from './Singleton';
+import { DBClient } from '../common/db';
+import { Singleton } from '../common/Singleton';
 export interface Task {
     id: string;
     devices_count: number;
     params: string;
     status: "new" | "ongoing" | "succeeded" | "failed";
+	multipleFiles: boolean;
     chunkUrl?: string;
     dataType: string;
     dataTypeParams: string;

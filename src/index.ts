@@ -1,6 +1,6 @@
 import { WorkMessage } from './message/WorkMessage';
-import { Task, TaskRepository } from './common/TaskRepository';
-import { DeviceRepository } from './common/DeviceRepository';
+import { Task, TaskRepository } from './task/TaskRepository';
+import { DeviceRepository } from './device/DeviceRepository';
 import { MessageFactory } from './message/MessageFactory';
 import { WebSocket, MessageEvent } from 'ws';
 import { v4 as uuid } from 'uuid';
@@ -23,6 +23,9 @@ const wss = new WebSocket.Server({ port })
 const deviceRepo = new DeviceRepository(undefined);
 const taskRepo: TaskRepository = new TaskRepository();
 const s3 = new S3Client({ region: 'us-west-2' });
+
+// Disconnect all devices
+deviceRepo.resetAllDevicesStatus();
 
 const requestListener = function (req: IncomingMessage, res: ServerResponse)
 {
@@ -51,6 +54,7 @@ const requestListener = function (req: IncomingMessage, res: ServerResponse)
 				devices_count: data.device_count,
         dataType: data.data_type,
         dataTypeParams: data.data_type_params,
+        multipleFiles: data.multiple_files,
 				params: data.params,
 				status: 'new'
 			};
@@ -102,7 +106,7 @@ wss.on('connection', async (ws, req) => {
 
   if (deviceId === "" || deviceId === null || deviceId === undefined) {
     deviceId = uuid();
-    console.log("New device");
+    console.log("New device: ", deviceId);
     await deviceRepo.createDevice({
       id: deviceId,
       status: "idle",
@@ -111,10 +115,11 @@ wss.on('connection', async (ws, req) => {
     });
     ws.send(JSON.stringify({ type: 'deviceId', data: deviceId }));
   } else {
-    console.log("Device found before");
-    deviceRepo.updateDevice({
+    console.log("Device found before: ", deviceId);
+    await deviceRepo.updateDevice({
       id: deviceId,
       status: 'idle',
+      address: deviceAddress,
       last_login: new Date(Date.now()),
     });
   }

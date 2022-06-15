@@ -1,10 +1,9 @@
-import { DBClient } from './db';
+import { DBClient } from '../common/db';
 import { WebSocket } from 'ws';
-import { Singleton } from "./Singleton";
+import { Singleton } from "../common/Singleton";
 import { createClient, RedisClientType } from 'redis'
 import neo4j from 'neo4j-driver';
-
-type DeviceStatus = "disconnected" | "idle" | "busy";
+import { DeviceStatus, DISCONNECTED } from './DeviceStatus';
 
 interface Device
 {
@@ -90,16 +89,18 @@ export class DeviceRepository
 		const lastLoginDate = device.last_login ?? new Date();
 		try
 		{
+			const editString = this._makeEditString(device, 'd');
+			const editObject = { ...device, last_login: neo4j.types.DateTime.fromStandardDate(lastLoginDate) };
 			const res = await session.writeTransaction(tx =>
-				tx.run(`MATCH (d:DEVICE {id: $id}) ${this._makeEditString(device, 'd')} RETURN d`, { ...device, last_login: neo4j.types.DateTime.fromStandardDate(lastLoginDate) })
+				tx.run(`MATCH (d:DEVICE {id: $id}) ${editString} RETURN d`, editObject)
 			);
-			console.log(`Found ${res.records.length}`);
-			console.log("Device status and login updated");
+			console.log("Device status and login updated: ", editObject);
 		} catch (err)
 		{
 			console.error(`Neo4j Update Error: `, err);
 		} finally
 		{
+			console.log(`Device updated ${device.id}`);
 			session.close();
 		}
 	}
@@ -165,4 +166,21 @@ export class DeviceRepository
         this.setStatus(deviceId, "disconnected");
         this.setSocket(deviceId, null);
     }
+
+	public async resetAllDevicesStatus() {
+		const session = this.dbClient.getSession();
+		try
+		{
+			const res = await session.writeTransaction(tx =>
+				tx.run(`MATCH (d:DEVICE) SET d.status="${DISCONNECTED}" RETURN d`)
+			);
+			console.log("All devices are diconnected");
+		} catch (err)
+		{
+			console.error(`Neo4j Update Error: `, err);
+		} finally
+		{
+			session.close();
+		}
+	}
 }
