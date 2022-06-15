@@ -5,14 +5,12 @@ import { createClient, RedisClientType } from 'redis'
 import neo4j from 'neo4j-driver';
 import { DeviceStatus, DISCONNECTED } from './DeviceStatus';
 
-interface Device
-{
-	id: string;
-	address: string;
-	status: DeviceStatus;
-	last_login: Date;
+interface Device {
+  id: string;
+  address: string;
+  status: DeviceStatus;
+  last_login: Date;
 }
-
 
 @Singleton
 export class DeviceRepository
@@ -148,24 +146,52 @@ export class DeviceRepository
         return devices;
     }
 
-    public setSocket(id: string, socket: WebSocket | null): void
-	{
-		this.socketStore.set(id, socket);
+	public async connectDeviceToTask(deviceId: string, taskId: string, number: number) {
+		const session = this.dbClient.getSession();
+		try {
+		  await session.writeTransaction((tx) =>
+			tx.run(`MATCH (d:DEVICE {id: $deviceId}), (t:TASK {id: $taskId}) CREATE (d)-[r:WORKS_ON {number: $number}]->(t)`, { deviceId, taskId, number })
+		  );
+		} catch (err) {
+		  console.error("Neo4j connect error", err);
+		} finally {
+		  // session.close();
+		}
 	}
-
-	public getSocket(id: string): WebSocket | null | undefined
-	{
-		return this.socketStore.get(id);
+	
+	public async disconnectDeviceFromTask(deviceId: string, taskId: string) {
+		const session = this.dbClient.getSession();
+		try {
+			await session.writeTransaction((tx) => tx.run(`MATCH (d:DEVICE {id: $deviceId})-[r:WORKS_ON]->(t:TASK {id: $taskId}) DELETE r`, { deviceId, taskId }));
+		} catch (err) {
+			console.error("Neo4j disconnect error", err);
+		} finally {
+			// session.close();
+		}
 	}
-
-    public disconnectDevice(deviceId: string) {
-        this.updateDevice({
-            id: deviceId,
-            status: "disconnected",
-        });
-        this.setStatus(deviceId, "disconnected");
-        this.setSocket(deviceId, null);
-    }
+	
+	public async makeDevicesMesh(sourceId: string, otherDevicesId: string[], taskId: string) {
+		const session = this.dbClient.getSession();
+		try {
+			otherDevicesId.forEach(async (deviceId) => {
+			await session.writeTransaction((tx) =>
+				tx.run(
+				`MATCH (source:DEVICE {id: $sourceId}), (destination:DEVICE {id: $deviceId}) CREATE (source)-[r:WORKS_WITH {taskId: $taskId}]->(destination)`,
+				{
+					sourceId,
+					deviceId,
+					taskId,
+				}
+				)
+			);
+			});
+		} catch (err) {
+			console.error("Neo4j mesh error", err);
+		} finally {
+			// session.close();
+		}
+	}
+	
 
 	public async resetAllDevicesStatus() {
 		const session = this.dbClient.getSession();
@@ -182,5 +208,24 @@ export class DeviceRepository
 		{
 			session.close();
 		}
+	}
+
+	public setSocket(id: string, socket: WebSocket | null): void
+	{
+		this.socketStore.set(id, socket);
+	}
+
+	public getSocket(id: string): WebSocket | null | undefined
+	{
+		return this.socketStore.get(id);
+	}
+
+	public disconnectDevice(deviceId: string) {
+		this.updateDevice({
+		  id: deviceId,
+		  status: "disconnected",
+		});
+		this.setStatus(deviceId, "disconnected");
+		this.setSocket(deviceId, null);
 	}
 }

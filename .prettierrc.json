@@ -1,0 +1,10 @@
+{
+	"arrowParens": "always",
+	"arrowSpacing": {
+		"before": true,
+		"after": true
+	},
+	"bracketSameLine": true,
+	"semi": true,
+	"printWidth": 160
+}
