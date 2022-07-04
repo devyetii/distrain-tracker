@@ -1,14 +1,14 @@
-import { DBClient } from '../common/db';
-import { Singleton } from '../common/Singleton';
+import { DBClient } from "../common/db";
+import { Singleton } from "../common/Singleton";
 export interface Task {
-    id: string;
-    devices_count: number;
-    params: string;
-    status: "new" | "ongoing" | "succeeded" | "failed";
-	  multipleFiles: boolean;
-    chunkUrl?: string;
-    dataType: string;
-    dataTypeParams: string;
+  id: string;
+  devices_count: number;
+  params: string;
+  status: "new" | "ongoing" | "succeeded" | "failed";
+  multipleFiles: boolean;
+  chunkUrl?: string;
+  dataType: string;
+  dataTypeParams: string;
 }
 
 @Singleton
@@ -23,7 +23,10 @@ export class TaskRepository {
     const session = this.dbClient.getSession();
     try {
       await session.writeTransaction((tx) =>
-        tx.run("CREATE (newTask:TASK) SET newTask.id = $id, newTask.devices_count = $devices_count, newTask.params = $params, newTask.status = $status", task)
+        tx.run(
+          "CREATE (newTask:TASK) SET newTask.id = $id, newTask.devices_count = $devices_count, newTask.params = $params, newTask.status = $status, newTask.dataType = $dataType, newTask.dataTypeParams = $dataTypeParams, newTask.multipleFiles = $multipleFiles",
+          task
+        )
       );
     } catch (err) {
       console.error("Neo4J store error", err);

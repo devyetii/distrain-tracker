@@ -1,14 +1,14 @@
-import { WorkMessage } from './message/WorkMessage';
-import { Task, TaskRepository } from './task/TaskRepository';
-import { DeviceRepository } from './device/DeviceRepository';
-import { MessageFactory } from './message/MessageFactory';
-import { WebSocket, MessageEvent } from 'ws';
-import { v4 as uuid } from 'uuid';
-import http, { IncomingMessage, ServerResponse } from 'http';
-import dotenv from 'dotenv';
-import { createServer } from 'http';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { WorkMessage } from "./message/WorkMessage";
+import { Task, TaskRepository } from "./task/TaskRepository";
+import { DeviceRepository } from "./device/DeviceRepository";
+import { MessageFactory } from "./message/MessageFactory";
+import { WebSocket, MessageEvent } from "ws";
+import { v4 as uuid } from "uuid";
+import http, { IncomingMessage, ServerResponse } from "http";
+import dotenv from "dotenv";
+import { createServer } from "http";
+import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 dotenv.config();
 
@@ -32,17 +32,15 @@ const apiPort: number = +(process.env.API_PORT ? process.env.API_PORT : 8000);
 const wss = new WebSocket.Server({ port });
 const deviceRepo = new DeviceRepository(undefined);
 const taskRepo: TaskRepository = new TaskRepository();
-const s3 = new S3Client({ region: 'us-west-2' });
+const s3 = new S3Client({ region: "us-west-2" });
 
 // Disconnect all devices
 deviceRepo.resetAllDevicesStatus();
 
-const requestListener = function (req: IncomingMessage, res: ServerResponse)
-{
-	res.setHeader("Content-Type", "application/json");
-	if (req.url === '/task' && req.method === 'POST')
-	{
-		/*
+const requestListener = function (req: IncomingMessage, res: ServerResponse) {
+  res.setHeader("Content-Type", "application/json");
+  if (req.url === "/task" && req.method === "POST") {
+    /*
 			1- save task in db
 			2- run scheduler or write in-place here
 				2.1- check if #devices is sufficient
@@ -60,7 +58,8 @@ const requestListener = function (req: IncomingMessage, res: ServerResponse)
       .on("end", async () => {
         const data = JSON.parse(buffer.toString());
         let task: Task = {
-          id: uuid(),
+          //id: uuid(),
+          id: "test-123",
           devices_count: data.devices_count,
           dataType: data.data_type,
           dataTypeParams: data.data_type_params,
@@ -72,7 +71,7 @@ const requestListener = function (req: IncomingMessage, res: ServerResponse)
 
         const metadataCommand = new GetObjectCommand({
           Bucket: process.env.S3_BUCKET,
-          Key: `t${task.id}/m.json`,
+          Key: `${task.id}/m.json`,
         });
         const metadataUrl = await getSignedUrl(s3, metadataCommand, { expiresIn: Number(process.env.S3_URL_EXPIRY) });
 
@@ -80,12 +79,13 @@ const requestListener = function (req: IncomingMessage, res: ServerResponse)
         for (let i = 0; i < task.devices_count; i++) {
           const chunkCommand = new GetObjectCommand({
             Bucket: process.env.S3_BUCKET,
-            Key: `t${task.id}/c${i + 1}.zip`,
+            Key: `${task.id}/c${i + 1}.zip`,
           });
           chunksUrl.push(await getSignedUrl(s3, chunkCommand, { expiresIn: Number(process.env.S3_URL_EXPIRY) }));
         }
 
         const response = {
+          message: "please put your files inside a folder named with given task id",
           task,
           data,
           metadataUrl,
@@ -112,7 +112,7 @@ wss.on("connection", async (ws, req) => {
   let deviceId = <string>req.headers["x-device-id"] || "";
   let deviceAddress = <string>req.headers["x-device-address"] || "";
 
-  if (deviceId === "" || deviceId === null || deviceId === undefined) {
+  if (deviceId === "" || deviceId === null || deviceId === undefined || true) {
     deviceId = uuid();
     console.log("New device: ", deviceId);
     await deviceRepo.createDevice({
@@ -126,7 +126,7 @@ wss.on("connection", async (ws, req) => {
     console.log("Device found before: ", deviceId);
     await deviceRepo.updateDevice({
       id: deviceId,
-      status: 'idle',
+      status: "idle",
       address: deviceAddress,
       last_login: new Date(Date.now()),
     });
@@ -167,7 +167,7 @@ async function schedule() {
       // Generate URL for metadata file
       const command = new GetObjectCommand({
         Bucket: process.env.S3_BUCKET,
-        Key: `t${minTask.id}/m.json`,
+        Key: `${minTask.id}/m.json`,
       });
       const metadataUrl = await getSignedUrl(s3, command, { expiresIn: Number(process.env.S3_URL_EXPIRY) });
 
@@ -179,7 +179,7 @@ async function schedule() {
         // Prepare the message
         const command = new GetObjectCommand({
           Bucket: process.env.S3_BUCKET,
-          Key: `t${minTask.id}/c${i + 1}.zip`,
+          Key: `${minTask.id}/c${i + 1}.zip`,
         });
         const chunkUrl = await getSignedUrl(s3, command, { expiresIn: Number(process.env.S3_URL_EXPIRY) });
 
