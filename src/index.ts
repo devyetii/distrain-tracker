@@ -160,7 +160,7 @@ async function schedule() {
   console.log(minTask);
   if (minTask) {
     const idleDevices = await deviceRepo.getNIdleDevices(minTask.devices_count); // Should be connected devices and not busy
-    const devicesList = idleDevices.map((d, i) => ({ number: i + 1, ...d }));
+    const devicesList = idleDevices.map((d, i) => ({ number: i, ...d }));
     let socket;
 
     if (idleDevices.length >= minTask.devices_count) {
@@ -173,7 +173,7 @@ async function schedule() {
 
       for (let [i, dev] of devicesList.entries()) {
         //  Get device socket
-        let otherDevicesList = devicesList.filter((d) => d.id !== dev.id).map((d) => ({ number: d.number, address: d.address }));
+        let otherDevicesList = devicesList.map((d) => ({ number: d.number, address: d.address })).sort((a, b) => a.number - b.number);
         socket = deviceRepo.getSocket(dev.id);
 
         // Prepare the message
