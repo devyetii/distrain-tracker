@@ -59,7 +59,7 @@ export class DeviceRepository
 
 	public async createDevice(device: Device)
 	{
-		const session = this.dbClient.getSession();
+		const session = (new DBClient()).getSession();
 		try
 		{
 			await session.writeTransaction(tx =>
@@ -83,7 +83,7 @@ export class DeviceRepository
 
 	public async updateDevice(device: Partial<Device>)
 	{
-		const session = this.dbClient.getSession();
+		const session = (new DBClient()).getSession();
 		const lastLoginDate = device.last_login ?? new Date();
 		try
 		{
@@ -128,7 +128,7 @@ export class DeviceRepository
 	}
 
     public async getNIdleDevices(n: number): Promise<Device[]> {
-        const session = this.dbClient.getSession();
+        const session = (new DBClient()).getSession();
         let devices: Device[] = [];
 
         try {
@@ -147,7 +147,7 @@ export class DeviceRepository
     }
 
 	public async connectDeviceToTask(deviceId: string, taskId: string, number: number) {
-		const session = this.dbClient.getSession();
+		const session = (new DBClient()).getSession();
 		try {
 		  await session.writeTransaction((tx) =>
 			tx.run(`MATCH (d:DEVICE {id: $deviceId}), (t:TASK {id: $taskId}) CREATE (d)-[r:WORKS_ON {number: $number}]->(t)`, { deviceId, taskId, number })
@@ -155,25 +155,26 @@ export class DeviceRepository
 		} catch (err) {
 		  console.error("Neo4j connect error", err);
 		} finally {
-		  // session.close();
+		  session.close();
 		}
 	}
 	
 	public async disconnectDeviceFromTask(deviceId: string, taskId: string) {
-		const session = this.dbClient.getSession();
+		const session = (new DBClient()).getSession();
 		try {
 			await session.writeTransaction((tx) => tx.run(`MATCH (d:DEVICE {id: $deviceId})-[r:WORKS_ON]->(t:TASK {id: $taskId}) DELETE r`, { deviceId, taskId }));
 		} catch (err) {
 			console.error("Neo4j disconnect error", err);
 		} finally {
-			// session.close();
+			session.close();
 		}
 	}
 	
 	public async makeDevicesMesh(sourceId: string, otherDevicesId: string[], taskId: string) {
-		const session = this.dbClient.getSession();
+		
 		try {
 			otherDevicesId.forEach(async (deviceId) => {
+				const session = (new DBClient()).getSession();
 			await session.writeTransaction((tx) =>
 				tx.run(
 				`MATCH (source:DEVICE {id: $sourceId}), (destination:DEVICE {id: $deviceId}) CREATE (source)-[r:WORKS_WITH {taskId: $taskId}]->(destination)`,
@@ -184,17 +185,18 @@ export class DeviceRepository
 				}
 				)
 			);
+			await session.close();
 			});
 		} catch (err) {
 			console.error("Neo4j mesh error", err);
 		} finally {
-			// session.close();
+			//session.close();
 		}
 	}
 	
 
 	public async resetAllDevicesStatus() {
-		const session = this.dbClient.getSession();
+		const session = (new DBClient()).getSession();
 		try
 		{
 			const res = await session.writeTransaction(tx =>

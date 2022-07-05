@@ -161,8 +161,8 @@ async function schedule() {
   if (minTask) {
     const idleDevices = await deviceRepo.getNIdleDevices(minTask.devices_count); // Should be connected devices and not busy
     const devicesList = idleDevices.map((d, i) => ({ number: i, ...d }));
+    console.log(devicesList)
     let socket;
-
     if (idleDevices.length >= minTask.devices_count) {
       // Generate URL for metadata file
       const command = new GetObjectCommand({
@@ -174,6 +174,7 @@ async function schedule() {
       for (let [i, dev] of devicesList.entries()) {
         //  Get device socket
         let otherDevicesList = devicesList.map((d) => ({ number: d.number, address: d.address })).sort((a, b) => a.number - b.number);
+        console.log(otherDevicesList)
         socket = deviceRepo.getSocket(dev.id);
 
         // Prepare the message

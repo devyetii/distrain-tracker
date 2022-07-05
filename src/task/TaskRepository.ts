@@ -20,7 +20,7 @@ export class TaskRepository {
   }
 
   public async addTask(task: Task) {
-    const session = this.dbClient.getSession();
+    const session = (new DBClient()).getSession();
     try {
       await session.writeTransaction((tx) =>
         tx.run(
@@ -32,24 +32,24 @@ export class TaskRepository {
       console.error("Neo4J store error", err);
     } finally {
       console.log("task stored successfully");
-      // session.close();
+      session.close();
     }
   }
 
   public async updateTask(taskId: string, status: "new" | "ongoing" | "succeeded" | "failed") {
-    const session = this.dbClient.getSession();
+    const session = (new DBClient()).getSession();
     try {
       await session.writeTransaction((tx) => tx.run("MATCH (t:TASK {id: $taskId}) SET t.status = $status", { taskId, status }));
     } catch (err) {
       console.error("Neo4J store error", err);
     } finally {
       console.log("task updated successfully");
-      // session.close();
+      session.close();
     }
   }
 
   public async getMinTask() {
-    const session = this.dbClient.getSession();
+    const session = (new DBClient()).getSession();
     let task: Task | null = null;
     try {
       const res = await session.readTransaction((tx) => tx.run(`MATCH (t:TASK) RETURN t ORDER BY t.devices_count LIMIT 1`));
