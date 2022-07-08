@@ -81,6 +81,29 @@ export class DeviceRepository
 		}
 	}
 
+	public async getAllDevices()
+	{
+		const session = (new DBClient()).getSession();
+		let devices: Device[] = [];
+
+		try
+		{
+			const res = await session.readTransaction(tx => 
+                tx.run("MATCH (d:DEVICE)  RETURN d ")    
+            );
+            devices = res.records.map(record => ({
+                ...record.get('d').properties,
+            }))
+		} catch (err)
+		{
+			console.error(`Neo4j GET devices Error: `, err);
+		} finally
+		{
+			session.close();
+		}
+		return devices;
+	}
+
 	public async updateDevice(device: Partial<Device>)
 	{
 		const session = (new DBClient()).getSession();

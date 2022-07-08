@@ -8,6 +8,8 @@ export class WorkMessage extends MessageBase {
     }
 
     public handle() {
+        console.log("Data Socket",JSON.stringify({ type: "work", data: this.data }));
+
         this.ws.send(JSON.stringify({ type: "work", data: this.data }));
     }
 }
